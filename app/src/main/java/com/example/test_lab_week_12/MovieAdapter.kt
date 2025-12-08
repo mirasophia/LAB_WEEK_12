@@ -28,19 +28,24 @@ class MovieAdapter(private val clickListener: MovieClickListener) :
         holder.itemView.setOnClickListener { clickListener.onMovieClick(movie) }
     }
 
-    fun addMovies(movieList: List<Movie>) {
+    // replace existing list with new list (safe)
+    fun setMovies(movieList: List<Movie>) {
+        movies.clear()
         movies.addAll(movieList)
-        notifyItemRangeInserted(0, movieList.size)
+        notifyDataSetChanged()
+    }
+
+    // optional incremental add
+    fun addMovies(movieList: List<Movie>) {
+        val start = movies.size
+        movies.addAll(movieList)
+        notifyItemRangeInserted(start, movieList.size)
     }
 
     class MovieViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val imageUrl = "https://image.tmdb.org/t/p/w185/"
-        private val titleText: TextView by lazy {
-            itemView.findViewById(R.id.movie_title)
-        }
-        private val poster: ImageView by lazy {
-            itemView.findViewById(R.id.movie_poster)
-        }
+        private val titleText: TextView by lazy { itemView.findViewById(R.id.movie_title) }
+        private val poster: ImageView by lazy { itemView.findViewById(R.id.movie_poster) }
 
         fun bind(movie: Movie) {
             titleText.text = movie.title

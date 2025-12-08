@@ -1,9 +1,11 @@
 package com.example.test_lab_week_12
 
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.view.MenuItem
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.Toolbar
 import com.bumptech.glide.Glide
 
 class DetailsActivity : AppCompatActivity() {
@@ -20,6 +22,12 @@ class DetailsActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_details)
 
+        val toolbar = findViewById<Toolbar>(R.id.details_toolbar)
+        setSupportActionBar(toolbar)
+
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        supportActionBar?.title = "LAB WEEK 12"
+
         val titleText: TextView = findViewById(R.id.title_text)
         val releaseText: TextView = findViewById(R.id.release_text)
         val overviewText: TextView = findViewById(R.id.overview_text)
@@ -29,16 +37,24 @@ class DetailsActivity : AppCompatActivity() {
 
         titleText.text = extras?.getString(EXTRA_TITLE).orEmpty()
         releaseText.text = extras?.getString(EXTRA_RELEASE).orEmpty().take(4)
-
         overviewText.text =
             getString(R.string.movie_overview, extras?.getString(EXTRA_OVERVIEW).orEmpty())
 
-        val posterPath = extras?.getString(EXTRA_POSTER).orEmpty()
-        Glide.with(this@DetailsActivity)
-            .load("$IMAGE_URL$posterPath")
-            .placeholder(R.mipmap.ic_launcher)
-            .fitCenter()
+        Glide.with(this)
+            .load("$IMAGE_URL${extras?.getString(EXTRA_POSTER).orEmpty()}")
             .into(poster)
+    }
 
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (item.itemId == android.R.id.home) {
+            finish()
+            return true
+        }
+        return super.onOptionsItemSelected(item)
+    }
+
+    override fun onSupportNavigateUp(): Boolean {
+        finish()
+        return true
     }
 }
