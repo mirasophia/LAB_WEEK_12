@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import java.util.*
 
 class MovieViewModel(private val movieRepository: MovieRepository) : ViewModel() {
 
@@ -29,7 +30,12 @@ class MovieViewModel(private val movieRepository: MovieRepository) : ViewModel()
                     _error.value = "An exception occurred: ${throwable.message}"
                 }
                 .collect { list ->
-                    _popularMovies.value = list
+                    // FILTER + SORT (assignment)
+                    val currentYear = Calendar.getInstance().get(Calendar.YEAR).toString()
+                    val filtered = list
+                        .filter { movie -> movie.releaseDate?.startsWith(currentYear) == true }
+                        .sortedByDescending { movie -> movie.popularity }
+                    _popularMovies.value = filtered
                 }
         }
     }
