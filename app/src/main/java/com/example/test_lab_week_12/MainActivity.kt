@@ -4,21 +4,22 @@ import android.os.Bundle
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.example.test_lab_week_12.model.Movie
 import com.google.android.material.snackbar.Snackbar
-import java.util.*
+import kotlinx.coroutines.launch
+import androidx.lifecycle.Lifecycle
 
 class MainActivity : AppCompatActivity() {
 
-    private val TAG = "MainActivity"
+    private val tag = "MainActivity"
 
     private val movieAdapter by lazy {
         MovieAdapter(object : MovieAdapter.MovieClickListener {
-            override fun onMovieClick(movie: Movie) {
+            override fun onMovieClick(movie: com.example.test_lab_week_12.model.Movie) {
                 openMovieDetails(movie)
             }
         })
@@ -28,59 +29,44 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // set toolbar
         val toolbar = findViewById<Toolbar>(R.id.main_toolbar)
         setSupportActionBar(toolbar)
         supportActionBar?.title = "LAB WEEK 12"
 
         val recyclerView: RecyclerView = findViewById(R.id.movie_list)
-
-        // IMPORTANT: set LayoutManager (Grid 2 columns)
         recyclerView.layoutManager = GridLayoutManager(this, 2)
         recyclerView.adapter = movieAdapter
 
-        // viewmodel
         val movieRepository = (application as MovieApplication).movieRepository
-        val movieViewModel = ViewModelProvider(
-            this,
-            object : ViewModelProvider.Factory {
-                override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    return MovieViewModel(movieRepository) as T
+        val factory = MovieViewModelFactory(movieRepository)
+        val movieViewModel = ViewModelProvider(this, factory).get(MovieViewModel::class.java)
+
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                // collect movies StateFlow
+                launch {
+                    movieViewModel.popularMovies.collect { movies ->
+                        Log.d(tag, "collected movies size=${movies.size}")
+                        movieAdapter.setMovies(movies)
+                        if (movies.isEmpty()) {
+                            Snackbar.make(recyclerView, "Received 0 movies from API", Snackbar.LENGTH_LONG).show()
+                        }
+                    }
                 }
-            }
-        )[MovieViewModel::class.java]
-
-        // observe data
-        movieViewModel.popularMovies.observe(this) { popularMovies ->
-            Log.d(TAG, "popularMovies received, size=${popularMovies.size}")
-
-            if (popularMovies.isEmpty()) {
-                Snackbar.make(recyclerView, "Received 0 movies from API", Snackbar.LENGTH_LONG).show()
-            }
-
-            // set movies (replace existing items)
-            movieAdapter.setMovies(popularMovies)
-
-            // if you want filtering by current year, use this instead:
-            /*
-            val currentYear = Calendar.getInstance().get(Calendar.YEAR).toString()
-            val filtered = popularMovies
-                .filter { it.releaseDate?.startsWith(currentYear) == true }
-                .sortedByDescending { it.popularity }
-            movieAdapter.setMovies(filtered)
-            */
-        }
-
-        // observe error
-        movieViewModel.error.observe(this) { error ->
-            if (!error.isNullOrEmpty()) {
-                Snackbar.make(recyclerView, error, Snackbar.LENGTH_LONG).show()
-                Log.e(TAG, "Repository error: $error")
+                // collect error StateFlow (if you used StateFlow for error)
+                launch {
+                    movieViewModel.error.collect { err ->
+                        if (err.isNotEmpty()) {
+                            Snackbar.make(recyclerView, err, Snackbar.LENGTH_LONG).show()
+                            Log.e(tag, "Repository error: $err")
+                        }
+                    }
+                }
             }
         }
     }
 
-    private fun openMovieDetails(movie: Movie) {
+    private fun openMovieDetails(movie: com.example.test_lab_week_12.model.Movie) {
         val intent = android.content.Intent(this, DetailsActivity::class.java).apply {
             putExtra(DetailsActivity.EXTRA_TITLE, movie.title)
             putExtra(DetailsActivity.EXTRA_RELEASE, movie.releaseDate)
