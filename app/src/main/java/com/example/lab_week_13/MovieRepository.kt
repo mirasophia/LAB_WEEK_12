@@ -1,5 +1,6 @@
 package com.example.test_lab_week_12
 
+import android.util.Log
 import com.example.test_lab_week_12.api.MovieService
 import com.example.test_lab_week_12.database.MovieDatabase
 import com.example.test_lab_week_12.model.Movie
@@ -18,23 +19,27 @@ class MovieRepository(
     fun fetchMovies(): Flow<List<Movie>> {
         return flow {
             val movieDao = movieDatabase.movieDao()
-
-            // ambil dari database dulu
             val savedMovies = movieDao.getMovies()
 
             if (savedMovies.isEmpty()) {
-                // kalau DB kosong → fetch API
                 val response = movieService.getPopularMovies(apiKey)
                 val movies = response.results
-
-                // simpan ke Room
                 movieDao.addMovies(movies)
-
                 emit(movies)
             } else {
-                // kalau DB ada → pakai cache
                 emit(savedMovies)
             }
         }.flowOn(Dispatchers.IO)
+    }
+
+    suspend fun fetchMoviesFromNetwork() {
+        val movieDao = movieDatabase.movieDao()
+        try {
+            val response = movieService.getPopularMovies(apiKey)
+            val moviesFetched = response.results
+            movieDao.addMovies(moviesFetched)
+        } catch (e: Exception) {
+            Log.d("MovieRepository", "Error: ${e.message}")
+        }
     }
 }
